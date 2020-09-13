@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Landmark Hunter</string>
+    <string name="score_str">Punteggio: %d</string>
+    <string name="place_address">Indirizzo: %s %s</string>
+    <string name="place_date">Visitato il: %s</string>
+    <string name="place_coordinates">Coordinate: %s %s</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <!-- TODO: Remove or change this placeholder text -->
+</resources>
