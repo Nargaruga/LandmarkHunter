@@ -182,7 +182,7 @@ public class MapFragment extends Fragment implements LocationListener {
                 //Scorro la lista di luoghi vicini
                 for(int i = 0; i < list.size(); i++) {
                     Place place = list.get(i);
-                    //Procedo solo se il luovo ha delle coordinate
+                    //Procedo solo se il luogo ha delle coordinate
                     if(place.getGeoCoordinates() != null) {
                         PointOfInterest poi = new PointOfInterest(place.getId(),
                                 place.getTitle(),

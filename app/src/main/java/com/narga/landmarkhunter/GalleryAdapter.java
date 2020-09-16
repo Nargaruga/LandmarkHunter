@@ -9,15 +9,13 @@ import android.widget.ImageView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.squareup.picasso.Picasso;
-
 import java.util.ArrayList;
-import java.util.List;
 
 public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ImageViewHolder> {
-    private ArrayList<String> items;
+    private static final String LOG_TAG = GalleryAdapter.class.getSimpleName();
+    private ArrayList<Uri> items;
 
-    public GalleryAdapter(ArrayList<String> i) {
+    public GalleryAdapter(ArrayList<Uri> i) {
         items = i;
     }
 
@@ -29,8 +27,9 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ImageVie
 
     @Override
     public void onBindViewHolder(@NonNull ImageViewHolder holder, int position) {
-        Uri uri = Uri.parse(items.get(position));
-        Picasso.get().load(uri).into(holder.image);
+        Uri uri = items.get(position);
+        holder.image.setImageURI(uri);
+        //TODO
     }
 
     @Override
@@ -43,10 +42,9 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ImageVie
     }
 
     //Imposta la lista di elementi
-    public void setItems(List<String> newItems) {
-        items.clear();
-        items.addAll(newItems);
-        notifyDataSetChanged();
+    public void addItem(Uri uri) {
+        items.add(uri);
+        notifyDataSetChanged(); //TODO EFFICIENTE?
     }
 
     public static class ImageViewHolder extends RecyclerView.ViewHolder {

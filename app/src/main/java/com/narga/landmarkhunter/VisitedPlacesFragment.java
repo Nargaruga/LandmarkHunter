@@ -50,13 +50,13 @@ public class VisitedPlacesFragment extends Fragment {
         ArrayList<PointOfInterest> items = new ArrayList<>();
         //Ottengo la recyclerView
         RecyclerView recyclerView = view.findViewById(R.id.recycler_view);
+        //Associo un adapter alla RecyclerView
+        adapter = new VisitedPlacesAdapter(items);
+        recyclerView.setAdapter(adapter);
         //Imposto un LayoutManager verticale per la RecyclerView
         LinearLayoutManager lm = new LinearLayoutManager(getContext());
         lm.setOrientation(RecyclerView.VERTICAL);
         recyclerView.setLayoutManager(lm);
-        //Associo un adapter alla RecyclerView
-        adapter = new VisitedPlacesAdapter(items);
-        recyclerView.setAdapter(adapter);
 
         //Inizio ad osservare i dati per essere notificato di cambiamenti
         observerSetup();
