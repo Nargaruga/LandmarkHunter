@@ -15,6 +15,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -43,8 +44,9 @@ import com.here.sdk.search.PlaceCategory;
 import com.here.sdk.search.SearchEngine;
 import com.here.sdk.search.SearchOptions;
 
+import java.text.DateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
@@ -64,6 +66,7 @@ public class MapFragment extends Fragment implements LocationListener {
     private SearchEngine searchEngine;
     private double latitude = 0, longitude = 0;
     private SharedViewModel viewModel;
+    private DateFormat dateFormat;
 
     public MapFragment() {
         // Required empty public constructor
@@ -73,6 +76,7 @@ public class MapFragment extends Fragment implements LocationListener {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         markers = new HashMap<>();
+        dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT);
     }
 
     @Override
@@ -101,6 +105,7 @@ public class MapFragment extends Fragment implements LocationListener {
         } catch(InstantiationErrorException e) {
             e.printStackTrace();
         }
+
         //Recupero un LocationManager
         locationManager = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
         if(locationManager != null) {
@@ -119,38 +124,25 @@ public class MapFragment extends Fragment implements LocationListener {
 
         //Inizializzo il ViewModel per l' interazione con il DB
         viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
+        //TODO
+        PointOfInterest poi = new PointOfInterest("test1", "test", "testaddress", "testdate", 0, 0, null);
+        if(viewModel.getAllPois().getValue() != null) {
+            ArrayList<PointOfInterest> pois = (ArrayList<PointOfInterest>) viewModel.getAllPois().getValue();
+            int index;
+            //Caso in cui il POI non è ancora stato visitato...
+            if((index = pois.indexOf(poi)) == -1) { //TODO da fare in background?
+
+            } else {
+                //Il poi è già presente nel database, pertanto recupero l' immagine da mostrare nella thumbnail dell' infopanel, se presente
+                if(pois.get(index).getImagePath() != null)
+                    poi.setImagePath(pois.get(index).getImagePath());
+            }
+        }
     }
 
     //Riporta la mappa sulla posizione dell' utente con uno zoom standard
     public void resetMap() {
         mapView.getCamera().lookAt(new GeoCoordinates(latitude, longitude), DEFAULT_ZOOM);
-    }
-
-    @SuppressLint("MissingPermission")
-    @Override
-    //Chiamato quando si ricevono i permessi richiesti
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if(requestCode == 1 && grantResults.length > 0) {
-            if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                askForUpdates();
-            } else {
-                Toast.makeText(requireActivity(), "Errore durante il recupero dei permessi per la geolocalizzazione.", Toast.LENGTH_LONG).show();
-            }
-        }
-    }
-
-    //Attiva la localizzazione richiedendo i permessi se necessario
-    private void askForUpdates() {
-        //Controllo i permessi
-        if(ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            //Ho i permessi, mi registro per ricevere gli aggiornamenti della posizione
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_TIME, MIN_DIST, this);
-            updateLocation(locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER));
-        } else {
-            //Non ho i permessi, pertanto li richiedo
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-        }
     }
 
     //Carica la mappa
@@ -166,7 +158,7 @@ public class MapFragment extends Fragment implements LocationListener {
     }
 
     //Cerca punti di interesse vicini
-    private void getNearbyPois() {
+    private void scanNearbyPois(Location location) {
         ArrayList<PlaceCategory> categoryList = new ArrayList<>();
         CategoryQuery query;
         SearchOptions options = new SearchOptions(LanguageCode.IT_IT, MAX_MARKERS);
@@ -187,22 +179,30 @@ public class MapFragment extends Fragment implements LocationListener {
                         PointOfInterest poi = new PointOfInterest(place.getId(),
                                 place.getTitle(),
                                 place.getAddress().streetName + " " + place.getAddress().houseNumOrName,
-                                Calendar.getInstance().getTime().toString(),
+                                getFormattedDate(location),
                                 place.getGeoCoordinates().latitude,
                                 place.getGeoCoordinates().longitude,
                                 null);
+
                         boolean visited = false;
                         if(viewModel.getAllPois().getValue() != null) {
                             ArrayList<PointOfInterest> pois = (ArrayList<PointOfInterest>) viewModel.getAllPois().getValue();
-
-                            if(!pois.contains(poi)) {
+                            int index;
+                            //Caso in cui il POI non è ancora stato visitato...
+                            if((index = pois.indexOf(poi)) == -1) { //TODO da fare in background?
+                                //...ma è abbastanza vicino da considerarsi tale
                                 if(isCloseEnough(place)) {
                                     viewModel.insertPoi(poi);
                                     visited = true;
                                 }
-                            } else visited = true;
+                            } else {
+                                //Il poi è già presente nel database, pertanto recupero l' immagine da mostrare nella thumbnail dell' infopanel, se presente
+                                if(pois.get(index).getImagePath() != null)
+                                    poi.setImagePath(pois.get(index).getImagePath());
+                                visited = true;
+                            }
                         }
-                        //Se ho raggiunto il numero massimo di segnalini rimuovo quello più distante
+
                         if(markers.size() == MAX_MARKERS)
                             removeFurthestMarker();
 
@@ -226,9 +226,9 @@ public class MapFragment extends Fragment implements LocationListener {
         MapMarker maxDistanceMarker = null;
         double maxDistance = 0;
         //Cerco il segnalino più distante
-        for(MapMarker marker : markers.values()){
+        for(MapMarker marker : markers.values()) {
             double distance = marker.getCoordinates().distanceTo(currentCoordinates);
-            if(distance > maxDistance){
+            if(distance > maxDistance) {
                 maxDistanceMarker = marker;
                 maxDistance = distance;
             }
@@ -244,22 +244,27 @@ public class MapFragment extends Fragment implements LocationListener {
     private void addMapMarker(PointOfInterest poi, boolean visited) {
         if(poi == null)
             return;
+
         GeoCoordinates coordinates = new GeoCoordinates(poi.getLatitude(), poi.getLongitude());
-        String name = poi.getName(), address = poi.getAddress();
         Metadata metadata = new Metadata();
         Anchor2D anchor = new Anchor2D(0.5f, 1);
         MapImage mapImage;
-        //Controllo se il luogo è stato già visitato o meno per decidere il colore del segnalino
+
+        //Decido il colore del segnalino
         if(visited)
             mapImage = MapImageFactory.fromResource(getResources(), R.drawable.ic_visited_location);
         else
             mapImage = MapImageFactory.fromResource(getResources(), R.drawable.ic_poi_marker);
+
         //Creo il segnalino e aggiungo i metadati
         MapMarker marker = new MapMarker(coordinates, mapImage, anchor);
-        metadata.setString("name", name);
-        metadata.setString("address", address);
+        metadata.setString("name", poi.getName());
+        metadata.setString("address", poi.getAddress());
+        if(poi.getImagePath() != null)
+            metadata.setString("imagePath", poi.getImagePath());
         metadata.setString("visited", String.valueOf(visited));
         marker.setMetadata(metadata);
+
         //Aggiungo il segnalino alla mappa
         mapView.getMapScene().addMapMarker(marker);
         //Aggiungo il seganlino alla lista di MapMarkers
@@ -291,10 +296,12 @@ public class MapFragment extends Fragment implements LocationListener {
                     if(metadata != null) {
                         panel.setLocName(metadata.getString("name"));
                         panel.setAddress(metadata.getString("address"));
+                        panel.setThumbnail(metadata.getString("imagePath"));
                     } else {
                         //Placeholder in caso di dati mancanti
                         panel.setLocName("N/A");
                         panel.setAddress("N/A");
+                        panel.thumbnail.setImageResource(R.drawable.ic_small_placeholder);
                     }
                     panel.setVisibility(View.VISIBLE);
                 } else
@@ -303,27 +310,79 @@ public class MapFragment extends Fragment implements LocationListener {
         });
     }
 
+    //Restituisce, appositamente formattata, la data in cui è stato effettuato il rilevamento di location
+    private String getFormattedDate(Location location) {
+        Date date = new Date(location.getTime());
+        return dateFormat.format(date);
+    }
+
     //Restituisce true se uno dei servizi di localizzazione è attivo, false altrimenti
     private boolean isLocationEnabled() {
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
                 locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
     }
 
+    @SuppressLint("MissingPermission")
+    @Override
+    //Chiamato quando si ricevono i permessi richiesti
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if(requestCode == 1 && grantResults.length > 0) {
+            if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                askForUpdates();
+            } else {
+                Toast.makeText(requireActivity(), "Errore durante il recupero dei permessi per la geolocalizzazione.", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    //Attiva la localizzazione richiedendo i permessi se necessario
+    private void askForUpdates() {
+        //Controllo i permessi
+        if(ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            //Ho i permessi, mi registro per ricevere gli aggiornamenti della posizione
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_TIME, MIN_DIST, this);
+            updateLocation(locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER));
+        } else {
+            //Non ho i permessi, pertanto li richiedo
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+        }
+    }
+
+    @Override
+    //Chiamato quando la posizione cambia
+    public void onLocationChanged(@NonNull Location location) {
+        updateLocation(location);
+    }
+
+    //Aggiorna la posizione
+    private void updateLocation(Location location) {
+        if(location == null) {
+            return;
+        }
+        //Recupero le nuove coordinate
+        latitude = location.getLatitude();
+        longitude = location.getLongitude();
+        //Analizzo i punti di interesse vicini
+        scanNearbyPois(location);
+        //Aggiorno il marker di posizione
+        updateLocationMarker();
+    }
+
     //Chiede all' utente di attivare la localizzazione
     private void showAlert() {
         AlertDialog.Builder dialog = new AlertDialog.Builder(requireContext());
         dialog.setTitle("Geolocalizzazione richiesta")
-                .setMessage("Abilita la geolocalizzazione per permettere all' app di funzionare correttamente.")
-                .setPositiveButton("Impostazioni", (dialogInterface, which) -> {
-                    Intent myIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                    startActivity(myIntent);
+                .setMessage("Abilita il GPS per permettere all' app di rilevare la tua posizione.")
+                .setPositiveButton("GPS", (dialogInterface, which) -> {
+                    Intent gpsIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                    startActivity(gpsIntent);
                 })
                 .setNegativeButton("Annulla", (dialogInterface, which) -> {
-                    //TODO?
+                    Toast.makeText(requireContext(), "GPS necessario per rilevare la posizione.", Toast.LENGTH_LONG).show();
                 })
                 .show();
     }
-
 
     @Override
     public void onPause() {
@@ -348,25 +407,6 @@ public class MapFragment extends Fragment implements LocationListener {
         mapView.onDestroy();
     }
 
-    @Override
-    //Chiamato quando la posizione cambia
-    public void onLocationChanged(@NonNull Location location) {
-        updateLocation(location);
-    }
-
-    //Aggiorna la posizione
-    private void updateLocation(Location location) {
-        if(location == null)
-            return;
-        //Recupero le nuove coordinate
-        latitude = location.getLatitude();
-        longitude = location.getLongitude();
-        //Recupero i punti di interesse vicini
-        getNearbyPois();
-        //Aggiorno il marker di posizione
-        updateLocationMarker();
-    }
-
     //Sposta il segnalino che marca la posizione corrente
     public void updateLocationMarker() {
         MapImage mapImage = MapImageFactory.fromResource(getResources(), R.drawable.ic_current_location);
@@ -383,23 +423,25 @@ public class MapFragment extends Fragment implements LocationListener {
 
     @Override
     public void onProviderEnabled(String provider) {
-
+        askForUpdates();
     }
 
     @Override
     public void onProviderDisabled(String provider) {
-
+        Toast.makeText(requireContext(), "GPS disattivato!", Toast.LENGTH_SHORT).show();
     }
 
     //Mantiene riferimenti ai componenti del pannello informativo
     public static class InfoPanel {
         private CardView card;
+        private ImageView thumbnail;
         private TextView locName;
         private TextView address;
 
         public InfoPanel(View r) {
             if(r != null) {
                 card = r.findViewById(R.id.info_panel);
+                thumbnail = r.findViewById(R.id.panel_thumbnail);
                 locName = r.findViewById(R.id.panel_location_name);
                 address = r.findViewById(R.id.panel_address);
             }
@@ -411,6 +453,19 @@ public class MapFragment extends Fragment implements LocationListener {
 
         public void setAddress(String s) {
             address.setText(s);
+        }
+
+        public void setThumbnail(String path) {
+            if(path != null) {
+                thumbnail.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+                    @Override
+                    public void onLayoutChange(View v, int left, int top, int right, int bottom, int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                        thumbnail.removeOnLayoutChangeListener(this);
+                        new BitmapHandlingTask(thumbnail.getWidth(), thumbnail.getHeight(), thumbnail).execute(path);
+                    }
+                });
+            } else
+                thumbnail.setImageResource(R.drawable.ic_small_placeholder);
         }
 
         public void setVisibility(int type) {

@@ -7,7 +7,6 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import java.util.HashMap;
 import java.util.List;
 
 //Mantiene un' istanza del repository e offre metodi per accedervi
@@ -35,6 +34,10 @@ public class SharedViewModel extends AndroidViewModel {
 
     public void insertPoi(PointOfInterest poi) {
         repository.insertPoi(poi);
+    }
+
+    public void updatePoi(String path, String id) {
+        repository.updatePoiImage(path, id);
     }
 
     public void clearPois() {

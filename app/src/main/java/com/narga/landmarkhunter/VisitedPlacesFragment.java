@@ -64,13 +64,10 @@ public class VisitedPlacesFragment extends Fragment {
 
     //Imposto l' observer per i dati sui luoghi esplorati
     private void observerSetup() {
-        viewModel.getAllPois().observe(getViewLifecycleOwner(), new Observer<List<PointOfInterest>>() {
-            @Override
-            public void onChanged(List<PointOfInterest> items) {
-                adapter.setItems(items);
-                score = adapter.getItemCount() * 10;
-                scoreText.setText(getString(R.string.score_str, score));
-            }
+        viewModel.getAllPois().observe(getViewLifecycleOwner(), items -> {
+            adapter.setItems(items);
+            score = adapter.getItemCount() * 10;
+            scoreText.setText(getString(R.string.score_str, score));
         });
     }
 }

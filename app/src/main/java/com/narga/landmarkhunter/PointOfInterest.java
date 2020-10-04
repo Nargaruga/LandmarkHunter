@@ -27,17 +27,17 @@ public class PointOfInterest {
     private String date;
     private double latitude;
     private double longitude;
-    @ColumnInfo(name = "image_paths")
-    private ArrayList<String> imagePaths;
+    @ColumnInfo(name = "image_path")
+    private String imagePath;
 
-    public PointOfInterest(@NonNull String id, String name, String address, String date, double latitude, double longitude, ArrayList<String> imagePaths) {
+    public PointOfInterest(@NonNull String id, String name, String address, String date, double latitude, double longitude, String imagePath) {
         this.id = id;
         this.name = name;
         this.address = address;
         this.date = date;
         this.latitude = latitude;
         this.longitude = longitude;
-        this.imagePaths = imagePaths;
+        this.imagePath = imagePath;
     }
 
     public void setId(@NonNull String s) {
@@ -68,8 +68,12 @@ public class PointOfInterest {
         return longitude;
     }
 
-    public ArrayList<String> getImagePaths() {
-        return imagePaths;
+    public void setImagePath(String s){
+        imagePath = s;
+    }
+
+    public String getImagePath() {
+        return imagePath;
     }
 
     //TODO: SERVE?

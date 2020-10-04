@@ -32,6 +32,12 @@ public class PlacesRepository {
         task.execute(poi);
     }
 
+    //Aggiorna asincronamente il path dell' immagine di un POI
+    public void updatePoiImage(String path, String id){
+        UpdateImageAsyncTask task = new UpdateImageAsyncTask(dao);
+        task.execute(path, id);
+    }
+
     //Effettua asincronamente una query sul database
     public void findPoi(String name) {
         QueryAsyncTask task = new QueryAsyncTask(dao);
@@ -103,6 +109,22 @@ public class PlacesRepository {
         @Override
         protected Void doInBackground(PointOfInterest... pois) {
             dao.insertAll(pois);
+            return null;
+        }
+    }
+
+    //Classe per aggiornare entry del database in maniera asincrona
+    private static class UpdateImageAsyncTask extends AsyncTask<String, Void, Void> {
+        private final PointOfInterestDao dao;
+
+        public UpdateImageAsyncTask(PointOfInterestDao d) {
+            dao = d;
+        }
+
+        @Override
+        protected Void doInBackground(String... params) {
+            if(params != null && params.length > 1)
+             dao.updateImageById(params[0], params[1]);
             return null;
         }
     }

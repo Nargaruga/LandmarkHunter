@@ -6,6 +6,7 @@ import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
+import androidx.room.Update;
 
 import java.util.List;
 
@@ -19,6 +20,9 @@ public interface PointOfInterestDao {
 
     @Insert()
     void insertAll(PointOfInterest... pois);
+
+    @Query("UPDATE point_of_interest SET image_path=:path WHERE id=:id")
+    void updateImageById(String path, String id);
 
     @Delete
     void delete(PointOfInterest poi);
