@@ -36,10 +36,10 @@
 
                 <ImageView
                     android:id="@+id/panel_thumbnail"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
                     android:layout_margin="8dp"
-                    android:src="@drawable/ic_image_placeholder" />
+                    android:src="@drawable/ic_small_placeholder" />
 
                 <TextView
                     android:id="@+id/panel_location_name"

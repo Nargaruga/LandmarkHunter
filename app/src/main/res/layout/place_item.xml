@@ -13,26 +13,32 @@
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="8dp">
+            android:layout_height="match_parent">
 
             <ImageView
                 android:id="@+id/entry_thumbnail"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:scaleType="centerCrop"
+                app:layout_constraintTop_toTopOf="parent"
+                android:contentDescription="@string/entry_thumbnail_description"/>
 
             <TextView
                 android:id="@+id/entry_name"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
                 android:layout_toEndOf="@id/entry_thumbnail"
+                android:background="#8000"
                 android:ellipsize="end"
                 android:maxLines="1"
+                android:padding="3sp"
+                android:textAlignment="center"
+                android:textColor="#fff"
                 android:textSize="@dimen/title_text"
-                app:layout_constraintStart_toEndOf="@id/entry_thumbnail"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintBottom_toBottomOf="@id/entry_thumbnail"
+                app:layout_constraintEnd_toEndOf="@id/entry_thumbnail"
+                app:layout_constraintStart_toStartOf="@id/entry_thumbnail" />
 
             <TextView
                 android:id="@+id/entry_address"
@@ -42,9 +48,11 @@
                 android:layout_toEndOf="@id/entry_thumbnail"
                 android:ellipsize="end"
                 android:maxLines="1"
+                android:paddingHorizontal="8dp"
+                android:paddingTop="8dp"
                 android:textSize="@dimen/secondary_text"
-                app:layout_constraintStart_toEndOf="@id/entry_thumbnail"
-                app:layout_constraintTop_toBottomOf="@id/entry_name" />
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/entry_thumbnail" />
 
             <TextView
                 android:id="@+id/entry_date_visited"
@@ -54,18 +62,21 @@
                 android:layout_toEndOf="@id/entry_thumbnail"
                 android:ellipsize="end"
                 android:maxLines="1"
+                android:paddingHorizontal="8dp"
+                android:paddingBottom="8dp"
                 android:textSize="@dimen/secondary_text"
-                app:layout_constraintStart_toEndOf="@id/entry_thumbnail"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/entry_address" />
 
             <ImageButton
-                android:id="@+id/entry_image_gallery"
+                android:id="@+id/locate_on_map"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:background="@drawable/ic_collections"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
+                app:layout_constraintTop_toBottomOf="@id/entry_thumbnail"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:src="@drawable/ic_spot_on_map"
+                android:backgroundTint="#fff"
+                android:contentDescription="@string/locate_on_map_icon_description"/>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.cardview.widget.CardView>
