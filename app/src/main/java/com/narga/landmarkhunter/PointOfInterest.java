@@ -44,6 +44,7 @@ public class PointOfInterest {
         id = s;
     }
 
+    @NonNull
     public String getId() {
         return id;
     }
@@ -75,8 +76,7 @@ public class PointOfInterest {
     public String getImagePath() {
         return imagePath;
     }
-
-    //TODO: SERVE?
+    
     @Override
     public boolean equals(Object obj) {
         if(this == obj)

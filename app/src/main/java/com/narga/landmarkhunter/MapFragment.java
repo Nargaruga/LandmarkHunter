@@ -1,7 +1,6 @@
 package com.narga.landmarkhunter;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -19,12 +18,17 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleObserver;
+import androidx.lifecycle.OnLifecycleEvent;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.here.sdk.core.Anchor2D;
@@ -49,15 +53,17 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
-//Fragment contenente una mappa
-public class MapFragment extends Fragment implements LocationListener {
+//Fragment contenente una mappa TODO descrizione decente e magari refactoring
+public class MapFragment extends Fragment implements LocationListener, LifecycleObserver {
     public static final String LOG_TAG = MapFragment.class.getSimpleName();
     public static final int MAX_MARKERS = 30;
     public static final int DEFAULT_ZOOM = 2000;
     public static final int DISTANCE_FOR_POINTS = 50;
     private static final long MIN_TIME = 3000;
-    private static final float MIN_DIST = 10;
+    private static final float MIN_DIST = 0;
     private MapMarker currentLocationMarker;
     private HashMap<String, MapMarker> markers;
     private MapFragment.InfoPanel panel;
@@ -67,9 +73,10 @@ public class MapFragment extends Fragment implements LocationListener {
     private double latitude = 0, longitude = 0;
     private SharedViewModel viewModel;
     private DateFormat dateFormat;
+    private Executor executor;
+    private ActivityResultLauncher<String> requestPermissionLauncher;
 
     public MapFragment() {
-        // Required empty public constructor
     }
 
     @Override
@@ -77,12 +84,34 @@ public class MapFragment extends Fragment implements LocationListener {
         super.onCreate(savedInstanceState);
         markers = new HashMap<>();
         dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT);
+        executor = Executors.newSingleThreadExecutor();
+
+        //Listener per ricevere dati da un altro fragment
+        getParentFragmentManager().setFragmentResultListener("coordinates", this, (key, bundle) -> {
+            double latitude = bundle.getDouble("latitude");
+            double longitude = bundle.getDouble("longitude");
+            //Centro la mappa sulle coordinate specificate
+            centerMapOnCoordinates(latitude, longitude);
+            //Passo automaticamente al tab della mappa
+            MainActivity mainActivity = (MainActivity) getActivity();
+            if(mainActivity != null)
+                mainActivity.switchTab(MainActivity.MAP_TAB);
+        });
+
+        //Imposto il launcher per richiedere i permessi
+        requestPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+            if(isGranted) {
+                askForUpdates();
+            } else {
+                Toast.makeText(requireActivity(), "Geolocalizzazione disattivata.", Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
+
         return inflater.inflate(R.layout.fragment_map, container, false);
     }
 
@@ -96,7 +125,7 @@ public class MapFragment extends Fragment implements LocationListener {
         //Carico la mappa
         loadMapScene();
         //Aggiungo un ClickListener al tasto di reset della mappa
-        resetMapButton.setOnClickListener(v -> resetMap());
+        resetMapButton.setOnClickListener(v -> centerMapOnCoordinates(this.latitude, this.longitude));
         //Aggiungo un TapListener alla mappa
         mapView.getGestures().setTapListener(this::pickMapMarker);
         //Creo un' istanza del motore di ricerca
@@ -113,36 +142,31 @@ public class MapFragment extends Fragment implements LocationListener {
             if(!isLocationEnabled())
                 showAlert();
         }
-        //Attivo la localizzazione
+
+        //Attivo la geolocalizzazione
         askForUpdates();
     }
 
     @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        FragmentActivity activity = requireActivity();
-
-        //Inizializzo il ViewModel per l' interazione con il DB
-        viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
-        //TODO
-        PointOfInterest poi = new PointOfInterest("test1", "test", "testaddress", "testdate", 0, 0, null);
-        if(viewModel.getAllPois().getValue() != null) {
-            ArrayList<PointOfInterest> pois = (ArrayList<PointOfInterest>) viewModel.getAllPois().getValue();
-            int index;
-            //Caso in cui il POI non è ancora stato visitato...
-            if((index = pois.indexOf(poi)) == -1) { //TODO da fare in background?
-
-            } else {
-                //Il poi è già presente nel database, pertanto recupero l' immagine da mostrare nella thumbnail dell' infopanel, se presente
-                if(pois.get(index).getImagePath() != null)
-                    poi.setImagePath(pois.get(index).getImagePath());
-            }
-        }
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        MainActivity mainActivity = (MainActivity) context;
+        //Osservo il lifecycle dell' activity per sapere quando viene creata
+        mainActivity.getLifecycle().addObserver(this);
     }
 
-    //Riporta la mappa sulla posizione dell' utente con uno zoom standard
-    public void resetMap() {
-        mapView.getCamera().lookAt(new GeoCoordinates(latitude, longitude), DEFAULT_ZOOM);
+    @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
+    public void onCreateActivity() {
+        FragmentActivity activity = requireActivity();
+        //Inizializzo il ViewModel per l' interazione con il DB
+        viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
+        //Rimuovo il LifecycleObserver
+        activity.getLifecycle().removeObserver(this);
+    }
+
+    //Centra la mappa sulle coordinate specificate con lo zoom di default
+    private void centerMapOnCoordinates(double lat, double lon) {
+        mapView.getCamera().lookAt(new GeoCoordinates(lat, lon), DEFAULT_ZOOM);
     }
 
     //Carica la mappa
@@ -159,14 +183,13 @@ public class MapFragment extends Fragment implements LocationListener {
 
     //Cerca punti di interesse vicini
     private void scanNearbyPois(Location location) {
-        ArrayList<PlaceCategory> categoryList = new ArrayList<>();
-        CategoryQuery query;
-        SearchOptions options = new SearchOptions(LanguageCode.IT_IT, MAX_MARKERS);
-
+        List<PlaceCategory> categoryList = new ArrayList<>();
+        SearchOptions options = new SearchOptions(LanguageCode.EN_US, MAX_MARKERS);
+        //Compongo la query
         categoryList.add(new PlaceCategory(PlaceCategory.SIGHTS_AND_MUSEUMS));
         categoryList.add(new PlaceCategory(PlaceCategory.NATURAL_AND_GEOGRAPHICAL));
-        query = new CategoryQuery(categoryList, new GeoCoordinates(latitude, longitude));
-
+        CategoryQuery query = new CategoryQuery(categoryList, new GeoCoordinates(latitude, longitude));
+        //Effettuo la query
         searchEngine.search(query, options, (searchError, list) -> {
             if(searchError != null) {
                 Toast.makeText(requireActivity(), "Errore nella ricerca: " + searchError.toString(), Toast.LENGTH_LONG).show();
@@ -174,11 +197,11 @@ public class MapFragment extends Fragment implements LocationListener {
                 //Scorro la lista di luoghi vicini
                 for(int i = 0; i < list.size(); i++) {
                     Place place = list.get(i);
-                    //Procedo solo se il luogo ha delle coordinate
-                    if(place.getGeoCoordinates() != null) {
+                    //Procedo solo se il luogo è valido e ha delle coordinate
+                    if(isValid(place) && place.getGeoCoordinates() != null) {
                         PointOfInterest poi = new PointOfInterest(place.getId(),
                                 place.getTitle(),
-                                place.getAddress().streetName + " " + place.getAddress().houseNumOrName,
+                                place.getAddress().streetName + " " + place.getAddress().houseNumOrName + ", " + place.getAddress().country,
                                 getFormattedDate(location),
                                 place.getGeoCoordinates().latitude,
                                 place.getGeoCoordinates().longitude,
@@ -189,7 +212,7 @@ public class MapFragment extends Fragment implements LocationListener {
                             ArrayList<PointOfInterest> pois = (ArrayList<PointOfInterest>) viewModel.getAllPois().getValue();
                             int index;
                             //Caso in cui il POI non è ancora stato visitato...
-                            if((index = pois.indexOf(poi)) == -1) { //TODO da fare in background?
+                            if((index = pois.indexOf(poi)) == -1) {
                                 //...ma è abbastanza vicino da considerarsi tale
                                 if(isCloseEnough(place)) {
                                     viewModel.insertPoi(poi);
@@ -203,6 +226,7 @@ public class MapFragment extends Fragment implements LocationListener {
                             }
                         }
 
+                        //Se ho raggiunto il massimo numero di marker rimuovo il più distante
                         if(markers.size() == MAX_MARKERS)
                             removeFurthestMarker();
 
@@ -218,6 +242,15 @@ public class MapFragment extends Fragment implements LocationListener {
                 }
             }
         });
+    }
+
+    //Restituisce true se il luogo è != null e rientra nelle categorie specificate, false altrimenti
+    private boolean isValid(Place place) {
+        if(place == null)
+            return false;
+
+        String mainCategoryId = place.getDetails().getPrimaryCategories().get(0).getId().split("-")[0];
+        return mainCategoryId.equals(PlaceCategory.SIGHTS_AND_MUSEUMS) || mainCategoryId.equals(PlaceCategory.NATURAL_AND_GEOGRAPHICAL);
     }
 
     //Cerco il segnalino più distante e lo rimuovo
@@ -322,20 +355,6 @@ public class MapFragment extends Fragment implements LocationListener {
                 locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
     }
 
-    @SuppressLint("MissingPermission")
-    @Override
-    //Chiamato quando si ricevono i permessi richiesti
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if(requestCode == 1 && grantResults.length > 0) {
-            if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                askForUpdates();
-            } else {
-                Toast.makeText(requireActivity(), "Errore durante il recupero dei permessi per la geolocalizzazione.", Toast.LENGTH_LONG).show();
-            }
-        }
-    }
-
     //Attiva la localizzazione richiedendo i permessi se necessario
     private void askForUpdates() {
         //Controllo i permessi
@@ -345,7 +364,7 @@ public class MapFragment extends Fragment implements LocationListener {
             updateLocation(locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER));
         } else {
             //Non ho i permessi, pertanto li richiedo
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+            requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
     }
 
@@ -363,8 +382,8 @@ public class MapFragment extends Fragment implements LocationListener {
         //Recupero le nuove coordinate
         latitude = location.getLatitude();
         longitude = location.getLongitude();
-        //Analizzo i punti di interesse vicini
-        scanNearbyPois(location);
+        //Cerco e analizzo i punti di interesse vicini sul thread dell' executor
+        executor.execute(() -> scanNearbyPois(location));
         //Aggiorno il marker di posizione
         updateLocationMarker();
     }

@@ -5,14 +5,12 @@ import android.app.Application;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 
 import java.util.List;
 
 //Mantiene un' istanza del repository e offre metodi per accedervi
 public class SharedViewModel extends AndroidViewModel {
     private final PlacesRepository repository;
-    private final MutableLiveData<List<PointOfInterest>> searchResults;
     private final LiveData<List<PointOfInterest>> allPois;
 
     public SharedViewModel(@NonNull Application app) {
@@ -21,11 +19,6 @@ public class SharedViewModel extends AndroidViewModel {
         repository = new PlacesRepository(app);
         //Ottiene i riferimenti ai dati da osservare
         allPois = repository.getAllPois();
-        searchResults = repository.getSearchResults();
-    }
-
-    MutableLiveData<List<PointOfInterest>> getSearchResults() {
-        return searchResults;
     }
 
     LiveData<List<PointOfInterest>> getAllPois() {
@@ -36,16 +29,8 @@ public class SharedViewModel extends AndroidViewModel {
         repository.insertPoi(poi);
     }
 
-    public void updatePoi(String path, String id) {
+    public void updatePoiImage(String path, String id) {
         repository.updatePoiImage(path, id);
-    }
-
-    public void clearPois() {
-        repository.clearPoiTable();
-    }
-
-    public int getPoiCount() {
-        return repository.getPoiCount();
     }
 
 }
