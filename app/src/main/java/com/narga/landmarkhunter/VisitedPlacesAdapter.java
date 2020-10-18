@@ -153,7 +153,7 @@ public class VisitedPlacesAdapter extends RecyclerView.Adapter<VisitedPlacesAdap
                 intent.putExtra("path", path);
                 intent.putExtra("id", id);
                 v.getContext().startActivity(intent);
-            } else if(v.getId() == locateOnMap.getId()) {//TODO CHANGE SELECTED MARKER COLOR
+            } else if(v.getId() == locateOnMap.getId()) {
                 //Passo le coordinate del luogo al map fragment, in modo da potervi centrare la mappa
                 Bundle coordinatesBundle = new Bundle();
                 coordinatesBundle.putDouble("latitude", latitude);

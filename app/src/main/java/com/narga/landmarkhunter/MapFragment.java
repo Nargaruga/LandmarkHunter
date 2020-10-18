@@ -56,12 +56,13 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-//Fragment contenente una mappa TODO descrizione decente e magari refactoring
+//Fragment per la gestione della mappa
 public class MapFragment extends Fragment implements LocationListener, LifecycleObserver {
     public static final String LOG_TAG = MapFragment.class.getSimpleName();
     public static final int MAX_MARKERS = 30;
     public static final int DEFAULT_ZOOM = 2000;
-    public static final int DISTANCE_FOR_POINTS = 50;
+    public static final int FOCUSED_ZOOM = 500;
+    public static final int DISTANCE_FOR_POINTS = 30;
     private static final long MIN_TIME = 3000;
     private static final float MIN_DIST = 0;
     private MapMarker currentLocationMarker;
@@ -91,7 +92,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
             double latitude = bundle.getDouble("latitude");
             double longitude = bundle.getDouble("longitude");
             //Centro la mappa sulle coordinate specificate
-            centerMapOnCoordinates(latitude, longitude);
+            centerMapOnCoordinates(latitude, longitude, FOCUSED_ZOOM);
             //Passo automaticamente al tab della mappa
             MainActivity mainActivity = (MainActivity) getActivity();
             if(mainActivity != null)
@@ -125,7 +126,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         //Carico la mappa
         loadMapScene();
         //Aggiungo un ClickListener al tasto di reset della mappa
-        resetMapButton.setOnClickListener(v -> centerMapOnCoordinates(this.latitude, this.longitude));
+        resetMapButton.setOnClickListener(v -> centerMapOnCoordinates(this.latitude, this.longitude, DEFAULT_ZOOM));
         //Aggiungo un TapListener alla mappa
         mapView.getGestures().setTapListener(this::pickMapMarker);
         //Creo un' istanza del motore di ricerca
@@ -165,8 +166,8 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
     }
 
     //Centra la mappa sulle coordinate specificate con lo zoom di default
-    private void centerMapOnCoordinates(double lat, double lon) {
-        mapView.getCamera().lookAt(new GeoCoordinates(lat, lon), DEFAULT_ZOOM);
+    private void centerMapOnCoordinates(double lat, double lon, double zoomFactor) {
+        mapView.getCamera().lookAt(new GeoCoordinates(lat, lon), zoomFactor);
     }
 
     //Carica la mappa
@@ -174,7 +175,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         //Carica una scena dall' SDK per visualizzare la mappa con un determinato stile
         mapView.getMapScene().loadScene(MapScheme.NORMAL_DAY, mapError -> {
             if(mapError == null) {
-                mapView.getCamera().lookAt(new GeoCoordinates(latitude, longitude), DEFAULT_ZOOM);
+                centerMapOnCoordinates(latitude, longitude, DEFAULT_ZOOM);
             } else {
                 Log.d(LOG_TAG, "onLoadScene failed: " + mapError.name());
             }
@@ -207,28 +208,13 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
                                 place.getGeoCoordinates().longitude,
                                 null);
 
-                        boolean visited = false;
-                        if(viewModel.getAllPois().getValue() != null) {
-                            ArrayList<PointOfInterest> pois = (ArrayList<PointOfInterest>) viewModel.getAllPois().getValue();
-                            int index;
-                            //Caso in cui il POI non è ancora stato visitato...
-                            if((index = pois.indexOf(poi)) == -1) {
-                                //...ma è abbastanza vicino da considerarsi tale
-                                if(isCloseEnough(place)) {
-                                    viewModel.insertPoi(poi);
-                                    visited = true;
-                                }
-                            } else {
-                                //Il poi è già presente nel database, pertanto recupero l' immagine da mostrare nella thumbnail dell' infopanel, se presente
-                                if(pois.get(index).getImagePath() != null)
-                                    poi.setImagePath(pois.get(index).getImagePath());
-                                visited = true;
-                            }
-                        }
+                        boolean visited = isVisited(poi);
+                        boolean close = isClose(place);
 
-                        //Se ho raggiunto il massimo numero di marker rimuovo il più distante
-                        if(markers.size() == MAX_MARKERS)
-                            removeFurthestMarker();
+                        if(close && !visited){
+                            visited = true;
+                            viewModel.insertPoi(poi);
+                        }
 
                         //Controllo se il segnalino è già sulla mappa
                         MapMarker marker = markers.get(place.getId());
@@ -253,6 +239,39 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         return mainCategoryId.equals(PlaceCategory.SIGHTS_AND_MUSEUMS) || mainCategoryId.equals(PlaceCategory.NATURAL_AND_GEOGRAPHICAL);
     }
 
+    //Restituisce true se il POI è già stato visitato in precedenza, false altrimenti
+    private boolean isVisited(PointOfInterest poi) {
+        if(poi == null)
+            return false;
+
+        boolean visited = false;
+        if(viewModel.getAllPois().getValue() != null) {
+            ArrayList<PointOfInterest> pois = (ArrayList<PointOfInterest>) viewModel.getAllPois().getValue();
+            int index;
+
+            if((index = pois.indexOf(poi)) != -1) {
+                //Il poi è già presente nel database, pertanto recupero l' immagine da mostrare nella thumbnail dell' infopanel, se presente
+                if(pois.get(index).getImagePath() != null)
+                    poi.setImagePath(pois.get(index).getImagePath());
+                visited = true;
+            }
+        }
+
+        return visited;
+    }
+
+    //Controlla se il luogo in questione è abbastanza vicino da essere considerato "visitato"
+    private boolean isClose(Place place) {
+        if(place == null)
+            return false;
+
+        Integer distance = place.getDistanceInMeters();
+        if(distance == null)
+            return false;
+        else
+            return distance < DISTANCE_FOR_POINTS;
+    }
+
     //Cerco il segnalino più distante e lo rimuovo
     private void removeFurthestMarker() {
         GeoCoordinates currentCoordinates = new GeoCoordinates(latitude, longitude);
@@ -266,7 +285,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
                 maxDistance = distance;
             }
         }
-        //Lo rimuovo
+
         if(maxDistanceMarker != null && maxDistanceMarker.getMetadata() != null) {
             markers.remove(maxDistanceMarker.getMetadata().getString("id"));
             mapView.getMapScene().removeMapMarker(maxDistanceMarker);
@@ -283,11 +302,15 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         Anchor2D anchor = new Anchor2D(0.5f, 1);
         MapImage mapImage;
 
+        //Se ho raggiunto il massimo numero di marker rimuovo il più distante
+        if(markers.size() == MAX_MARKERS)
+            removeFurthestMarker();
+
         //Decido il colore del segnalino
         if(visited)
-            mapImage = MapImageFactory.fromResource(getResources(), R.drawable.ic_visited_location);
+            mapImage = MapImageFactory.fromResource(getResources(), R.drawable.ic_poi_visited);
         else
-            mapImage = MapImageFactory.fromResource(getResources(), R.drawable.ic_poi_marker);
+            mapImage = MapImageFactory.fromResource(getResources(), R.drawable.ic_poi);
 
         //Creo il segnalino e aggiungo i metadati
         MapMarker marker = new MapMarker(coordinates, mapImage, anchor);
@@ -302,18 +325,6 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         mapView.getMapScene().addMapMarker(marker);
         //Aggiungo il seganlino alla lista di MapMarkers
         markers.put(poi.getId(), marker);
-    }
-
-    //Controlla se il POI in questione è abbastanza vicino da essere considerato "visitato"
-    private boolean isCloseEnough(Place place) {
-        if(place == null)
-            return false;
-
-        Integer distance = place.getDistanceInMeters();
-        if(distance == null)
-            return false;
-        else
-            return distance < DISTANCE_FOR_POINTS;
     }
 
     //Seleziona il marker toccato dall' utente
@@ -397,9 +408,8 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
                     Intent gpsIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
                     startActivity(gpsIntent);
                 })
-                .setNegativeButton("Annulla", (dialogInterface, which) -> {
-                    Toast.makeText(requireContext(), "GPS necessario per rilevare la posizione.", Toast.LENGTH_LONG).show();
-                })
+                .setNegativeButton("Annulla", (dialogInterface, which) ->
+                        Toast.makeText(requireContext(), "GPS necessario per rilevare la posizione.", Toast.LENGTH_LONG).show())
                 .show();
     }
 

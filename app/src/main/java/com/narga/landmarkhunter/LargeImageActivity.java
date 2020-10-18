@@ -46,7 +46,6 @@ public class LargeImageActivity extends AppCompatActivity implements View.OnClic
         //Se nel database era già presente un filepath visualizzo l' immagine
         path = getIntent().getStringExtra("path");
         id = getIntent().getStringExtra("id");
-        if(path != null) Log.d(LOG_TAG, path); //TODO
 
         //Ripristino lo stato salvato, se applicabile
         if(savedInstanceState != null) {
@@ -77,7 +76,7 @@ public class LargeImageActivity extends AppCompatActivity implements View.OnClic
         galleryLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
-                    if(result.getData().getData() != null) {
+                    if(result.getData() != null && result.getData().getData() != null) {
                         path = getPathFromUri(result.getData().getData());
                         new BitmapHandlingTask(photoView.getWidth(), photoView.getHeight(), photoView).execute(path);
                         viewModel.updatePoiImage(path, id);
@@ -113,32 +112,18 @@ public class LargeImageActivity extends AppCompatActivity implements View.OnClic
         }
     }
 
-    //TODO REMOVE
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if(requestCode == ImagePickerDialogFragment.TAKE_PICTURE_CODE && resultCode == RESULT_OK) {
-            new BitmapHandlingTask(photoView.getWidth(), photoView.getHeight(), photoView).execute(path);
-            viewModel.updatePoiImage(path, id);
-        } else if(requestCode == ImagePickerDialogFragment.PICK_IMAGE_CODE && resultCode == RESULT_OK) {
-            //L' utente ha selezionato un' immagine dalla galleria
-            if(data != null) {
-                new BitmapHandlingTask(photoView.getWidth(), photoView.getHeight(), photoView).execute(path);
-                viewModel.updatePoiImage(path, id);
-            }
-        }
-    }
-
     //Recupera il percorso del file identificato dall' URI
     private String getPathFromUri(Uri uri) {
         String[] filePathColumn = {MediaStore.Images.Media.DATA};
         Cursor cursor = getContentResolver().query(uri, filePathColumn, null, null, null);
+        String picturePath = null;
 
-        cursor.moveToFirst();
-        int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
-        String picturePath = cursor.getString(columnIndex);
-        cursor.close();
+        if(cursor != null) {
+            cursor.moveToFirst();
+            int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
+            picturePath = cursor.getString(columnIndex);
+            cursor.close();
+        }
 
         return picturePath;
     }
