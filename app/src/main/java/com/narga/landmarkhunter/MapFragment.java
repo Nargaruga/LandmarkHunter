@@ -55,6 +55,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 //Fragment per la gestione della mappa
 public class MapFragment extends Fragment implements LocationListener, LifecycleObserver {
@@ -200,9 +202,15 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
                     Place place = list.get(i);
                     //Procedo solo se il luogo è valido e ha delle coordinate
                     if(isValid(place) && place.getGeoCoordinates() != null) {
+                        //Compongo l' indirizzo
+                        String address = place.getAddress().streetName.trim() + " " + place.getAddress().houseNumOrName.trim();
+                        String completeAddress = Stream.of(address.trim(), place.getAddress().city.trim(), place.getAddress().country.trim())
+                                .filter(str -> str != null && !str.isEmpty())
+                                .collect(Collectors.joining(", "));
+
                         PointOfInterest poi = new PointOfInterest(place.getId(),
                                 place.getTitle(),
-                                place.getAddress().streetName + " " + place.getAddress().houseNumOrName + ", " + place.getAddress().country,
+                                completeAddress,
                                 getFormattedDate(location),
                                 place.getGeoCoordinates().latitude,
                                 place.getGeoCoordinates().longitude,
