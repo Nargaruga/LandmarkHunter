@@ -1,16 +1,16 @@
-package com.narga.landmarkhunter;
+package com.narga.landmarkhunter.ui;
 
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.widget.SearchView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
+import com.narga.landmarkhunter.ui.adapters.FragmentAdapter;
+import com.narga.landmarkhunter.R;
 
+//Activity contenente un tablayout
 public class MainActivity extends AppCompatActivity {
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
     public static final int MAP_TAB = 0;
@@ -27,6 +27,7 @@ public class MainActivity extends AppCompatActivity {
 
         pager.setAdapter(new FragmentAdapter(this.getSupportFragmentManager(), this.getLifecycle()));
         pager.setUserInputEnabled(false);
+        //Entrambi i fragment rimarranno caricati in memoria finchè l' applicazione è aperta
         pager.setOffscreenPageLimit(1);
 
         new TabLayoutMediator(tabLayout, pager, (tab, position) -> {
@@ -39,6 +40,9 @@ public class MainActivity extends AppCompatActivity {
 
     //Passo al tab specificato
     public void switchTab(int tabIndex){
+        if(tabIndex != MAP_TAB && tabIndex != VISITED_TAB)
+            return;
+
         pager.setCurrentItem(tabIndex);
     }
 

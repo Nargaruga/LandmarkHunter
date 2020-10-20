@@ -1,4 +1,4 @@
-package com.narga.landmarkhunter;
+package com.narga.landmarkhunter.data;
 
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
@@ -11,9 +11,6 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 @Entity(tableName = "point_of_interest")
 @TypeConverters(PointOfInterest.Converters.class)

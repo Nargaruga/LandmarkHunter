@@ -1,10 +1,12 @@
-package com.narga.landmarkhunter;
+package com.narga.landmarkhunter.database;
 
 import android.app.Application;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
+
+import com.narga.landmarkhunter.data.PointOfInterest;
 
 import java.util.List;
 
@@ -21,7 +23,7 @@ public class SharedViewModel extends AndroidViewModel {
         allPois = repository.getAllPois();
     }
 
-    LiveData<List<PointOfInterest>> getAllPois() {
+    public LiveData<List<PointOfInterest>> getAllPois() {
         return allPois;
     }
 

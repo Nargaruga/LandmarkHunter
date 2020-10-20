@@ -1,31 +1,31 @@
-package com.narga.landmarkhunter;
+package com.narga.landmarkhunter.ui;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.narga.landmarkhunter.data.PointOfInterest;
+import com.narga.landmarkhunter.R;
+import com.narga.landmarkhunter.ui.adapters.VisitedPlacesAdapter;
+import com.narga.landmarkhunter.database.SharedViewModel;
 
 import java.util.ArrayList;
 
 //Fragment contenente il punteggio e la lista dei luoghi esplorati
 public class VisitedPlacesFragment extends Fragment {
     private static final String LOG_TAG = VisitedPlacesAdapter.class.getSimpleName();
-    private static final int SCORE_INCREMENT = 1;
-    private VisitedPlacesAdapter adapter;
-    private SharedViewModel viewModel;
-    private TextView scoreText;
-    private int score;
+    private VisitedPlacesAdapter adapter; //Adapter per associare gli elemento alla RecyclerList
+    private SharedViewModel viewModel; //ViewModel per l' interazione con il DB
+    private TextView scoreText; //TextView che visualizza il numero di luoghi visitati
+    private int score; //Numero di luoghi visitati
 
     public VisitedPlacesFragment() {
         // Required empty public constructor
@@ -67,7 +67,7 @@ public class VisitedPlacesFragment extends Fragment {
     private void observerSetup() {
         viewModel.getAllPois().observe(getViewLifecycleOwner(), items -> {
             adapter.setItems(items);
-            score = adapter.getItemCount() * SCORE_INCREMENT;
+            score = adapter.getItemCount();
             scoreText.setText(getString(R.string.score_str, score));
         });
     }

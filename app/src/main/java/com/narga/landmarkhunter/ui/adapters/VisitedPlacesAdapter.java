@@ -1,4 +1,4 @@
-package com.narga.landmarkhunter;
+package com.narga.landmarkhunter.ui.adapters;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -15,6 +15,11 @@ import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
 import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.narga.landmarkhunter.R;
+import com.narga.landmarkhunter.data.PointOfInterest;
+import com.narga.landmarkhunter.ui.LargeImageActivity;
+import com.narga.landmarkhunter.utility.BitmapHandlingTask;
 
 import java.util.ArrayList;
 import java.util.List;

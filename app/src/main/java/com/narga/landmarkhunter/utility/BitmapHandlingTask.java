@@ -1,4 +1,4 @@
-package com.narga.landmarkhunter;
+package com.narga.landmarkhunter.utility;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -6,6 +6,7 @@ import android.os.AsyncTask;
 import android.widget.ImageView;
 
 import com.github.chrisbanes.photoview.PhotoView;
+import com.narga.landmarkhunter.R;
 
 import java.lang.ref.WeakReference;
 

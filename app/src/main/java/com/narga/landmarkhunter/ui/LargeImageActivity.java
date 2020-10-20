@@ -1,13 +1,13 @@
-package com.narga.landmarkhunter;
+package com.narga.landmarkhunter.ui;
 
 import android.Manifest;
+import android.content.AsyncQueryHandler;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.widget.Button;
@@ -21,9 +21,13 @@ import androidx.core.app.ActivityCompat;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.github.chrisbanes.photoview.PhotoView;
+import com.narga.landmarkhunter.utility.BitmapHandlingTask;
+import com.narga.landmarkhunter.R;
+import com.narga.landmarkhunter.database.SharedViewModel;
+import com.narga.landmarkhunter.utility.QueryHandler;
 
 //Activity che mostra una versione ingrandita dell' immagine della thumbnail
-public class LargeImageActivity extends AppCompatActivity implements View.OnClickListener {
+public class LargeImageActivity extends AppCompatActivity implements View.OnClickListener, QueryHandler.AsyncQueryListener {
     private static final String LOG_TAG = LargeImageActivity.class.getSimpleName();
     private static final int STORAGE_PERMISSIONS = 0;
     private PhotoView photoView;
@@ -32,6 +36,7 @@ public class LargeImageActivity extends AppCompatActivity implements View.OnClic
     private String path;
     private ActivityResultLauncher<Uri> cameraLauncher;
     private ActivityResultLauncher<Intent> galleryLauncher;
+    private AsyncQueryHandler asyncQueryHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +45,8 @@ public class LargeImageActivity extends AppCompatActivity implements View.OnClic
 
         photoView = findViewById(R.id.selected_image);
         Button editImage = findViewById(R.id.edit_image);
+
+        asyncQueryHandler = new QueryHandler(getContentResolver(), this);
 
         //Recupero il ViewModel condiviso
         viewModel = new ViewModelProvider(this).get(SharedViewModel.class);
@@ -77,13 +84,21 @@ public class LargeImageActivity extends AppCompatActivity implements View.OnClic
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if(result.getData() != null && result.getData().getData() != null) {
-                        path = getPathFromUri(result.getData().getData());
-                        new BitmapHandlingTask(photoView.getWidth(), photoView.getHeight(), photoView).execute(path);
-                        viewModel.updatePoiImage(path, id);
+                        asyncQueryHandler.startQuery(0,
+                                null,
+                                result.getData().getData(),
+                                new String[]{MediaStore.Images.Media.DATA},
+                                null,
+                                null,
+                                null);
                     } else {
                         Toast.makeText(this, "Errore durante il caricamento dell' immagine.", Toast.LENGTH_LONG).show();
                     }
                 });
+    }
+
+    public void setFilepath(String s) {
+        path = s;
     }
 
     @Override
@@ -112,24 +127,17 @@ public class LargeImageActivity extends AppCompatActivity implements View.OnClic
         }
     }
 
-    //Recupera il percorso del file identificato dall' URI
-    private String getPathFromUri(Uri uri) {
-        String[] filePathColumn = {MediaStore.Images.Media.DATA};
-        Cursor cursor = getContentResolver().query(uri, filePathColumn, null, null, null);
-        String picturePath = null;
-
+    @Override
+    public void onQueryComplete(int token, Object cookie, Cursor cursor) {
         if(cursor != null) {
             cursor.moveToFirst();
-            int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
-            picturePath = cursor.getString(columnIndex);
+            int columnIndex = cursor.getColumnIndex(new String[]{MediaStore.Images.Media.DATA}[0]);
+            String picturePath = cursor.getString(columnIndex);
             cursor.close();
+
+            new BitmapHandlingTask(photoView.getWidth(), photoView.getHeight(), photoView).execute(picturePath);
+            viewModel.updatePoiImage(picturePath, id);
         }
-
-        return picturePath;
-    }
-
-    public void setFilepath(String s) {
-        path = s;
     }
 
     @Override

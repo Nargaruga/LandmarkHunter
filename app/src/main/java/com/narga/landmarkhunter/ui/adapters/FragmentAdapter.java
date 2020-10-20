@@ -1,10 +1,13 @@
-package com.narga.landmarkhunter;
+package com.narga.landmarkhunter.ui.adapters;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.lifecycle.Lifecycle;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
+
+import com.narga.landmarkhunter.ui.MapFragment;
+import com.narga.landmarkhunter.ui.VisitedPlacesFragment;
 
 public class FragmentAdapter extends FragmentStateAdapter {
 

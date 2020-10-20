@@ -1,4 +1,4 @@
-package com.narga.landmarkhunter;
+package com.narga.landmarkhunter.ui;
 
 import android.Manifest;
 import android.content.Context;
@@ -47,6 +47,10 @@ import com.here.sdk.search.Place;
 import com.here.sdk.search.PlaceCategory;
 import com.here.sdk.search.SearchEngine;
 import com.here.sdk.search.SearchOptions;
+import com.narga.landmarkhunter.R;
+import com.narga.landmarkhunter.data.PointOfInterest;
+import com.narga.landmarkhunter.database.SharedViewModel;
+import com.narga.landmarkhunter.utility.BitmapHandlingTask;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
@@ -61,23 +65,24 @@ import java.util.stream.Stream;
 //Fragment per la gestione della mappa
 public class MapFragment extends Fragment implements LocationListener, LifecycleObserver {
     public static final String LOG_TAG = MapFragment.class.getSimpleName();
-    public static final int MAX_MARKERS = 30;
-    public static final int DEFAULT_ZOOM = 2000;
-    public static final int FOCUSED_ZOOM = 500;
-    public static final int DISTANCE_FOR_POINTS = 30;
-    private static final long MIN_TIME = 3000;
-    private static final float MIN_DIST = 0;
-    private MapMarker currentLocationMarker;
-    private HashMap<String, MapMarker> markers;
-    private MapFragment.InfoPanel panel;
-    private LocationManager locationManager;
-    private MapView mapView;
-    private SearchEngine searchEngine;
-    private double latitude = 0, longitude = 0;
-    private SharedViewModel viewModel;
-    private DateFormat dateFormat;
-    private Executor executor;
-    private ActivityResultLauncher<String> requestPermissionLauncher;
+    public static final int MAX_MARKERS = 30; //Massimo numero di marker visualizzabili allo stesso momento
+    public static final int DEFAULT_ZOOM = 2000; //Zoom di default
+    public static final int FOCUSED_ZOOM = 500; //Zoom maggiore
+    public static final int DISTANCE_FOR_POINTS = 30; //Distanza (in metri) massima per considerare un POI come visitato
+    private static final long MIN_TIME = 3000; //Intervallo di tempo (millisecondi) minimo tra aggiornamenti della posizione
+    private static final float MIN_DIST = 0; //Spostamento (in metri) minimo tra aggiornamenti della posizione
+    private MapMarker currentLocationMarker; //Marker che indica la posizione attuale
+    private HashMap<String, MapMarker> markers; //Mappa (id POI) -> (marker su mappa)
+    private MapFragment.InfoPanel panel; //Pannello che mostra informazioni sul POI selezionato
+    private LocationManager locationManager; //Punto di accesso per i sistemi di localizzazione
+    private MapView mapView; //Mappa di HERE SDK
+    private SearchEngine searchEngine; //Motore di ricerca di HERE SDK
+    private double latitude = 0, longitude = 0; //Latitudine e longitudine attuali
+    private SharedViewModel viewModel; //ViewModel per l' interazione con il DB
+    private DateFormat dateFormat; //Formato per la data
+    private Executor executor; //Executor per eseguire operazioni bloccanti in background
+    private ActivityResultLauncher<String> requestPermissionLauncher; //Launcher per la richiesta di permessi
+    private MapMarker selectedMarker;
 
     public MapFragment() {
     }
@@ -88,6 +93,11 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         markers = new HashMap<>();
         dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT);
         executor = Executors.newSingleThreadExecutor();
+
+        if(savedInstanceState != null) {
+            selectedMarker = markers.get(savedInstanceState.getString("selectedMarkerId"));
+            showPanel(selectedMarker);
+        }
 
         //Listener per ricevere dati da un altro fragment
         getParentFragmentManager().setFragmentResultListener("coordinates", this, (key, bundle) -> {
@@ -145,9 +155,6 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
             if(!isLocationEnabled())
                 showAlert();
         }
-
-        //Attivo la geolocalizzazione
-        askForUpdates();
     }
 
     @Override
@@ -167,7 +174,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         activity.getLifecycle().removeObserver(this);
     }
 
-    //Centra la mappa sulle coordinate specificate con lo zoom di default
+    //Centra la mappa sulle coordinate specificate con il fattore di zoom passato
     private void centerMapOnCoordinates(double lat, double lon, double zoomFactor) {
         mapView.getCamera().lookAt(new GeoCoordinates(lat, lon), zoomFactor);
     }
@@ -185,7 +192,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
     }
 
     //Cerca punti di interesse vicini
-    private void scanNearbyPois(Location location) {
+    private void scanNearbyPois(@NonNull Location location) {
         List<PlaceCategory> categoryList = new ArrayList<>();
         SearchOptions options = new SearchOptions(LanguageCode.EN_US, MAX_MARKERS);
         //Compongo la query
@@ -219,7 +226,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
                         boolean visited = isVisited(poi);
                         boolean close = isClose(place);
 
-                        if(close && !visited){
+                        if(close && !visited) {
                             visited = true;
                             viewModel.insertPoi(poi);
                         }
@@ -301,10 +308,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
     }
 
     //Aggiunge un marker sulla mappa alle coordinate specificate
-    private void addMapMarker(PointOfInterest poi, boolean visited) {
-        if(poi == null)
-            return;
-
+    private void addMapMarker(@NonNull PointOfInterest poi, boolean visited) {
         GeoCoordinates coordinates = new GeoCoordinates(poi.getLatitude(), poi.getLongitude());
         Metadata metadata = new Metadata();
         Anchor2D anchor = new Anchor2D(0.5f, 1);
@@ -322,6 +326,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
 
         //Creo il segnalino e aggiungo i metadati
         MapMarker marker = new MapMarker(coordinates, mapImage, anchor);
+        metadata.setString("id", poi.getId());
         metadata.setString("name", poi.getName());
         metadata.setString("address", poi.getAddress());
         if(poi.getImagePath() != null)
@@ -335,43 +340,88 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         markers.put(poi.getId(), marker);
     }
 
-    //Seleziona il marker toccato dall' utente
-    private void pickMapMarker(final Point2D touchPoint) {
+    //Seleziona il marker più in alto tra quelli vicini a touchPoint e mostra il pannello con le informazioni sul relativo POI
+    private void pickMapMarker(@NonNull Point2D touchPoint) {
         float radiusInPixel = 2;
         mapView.pickMapItems(touchPoint, radiusInPixel, pickMapItemsResult -> {
             if(pickMapItemsResult != null) {
-                List<MapMarker> markers = pickMapItemsResult.getMarkers();
-                if(markers.size() > 0) {
-                    MapMarker topmostMapMarker = markers.get(0);
-                    Metadata metadata = topmostMapMarker.getMetadata();
+                List<MapMarker> nearbyMarkers = pickMapItemsResult.getMarkers();
+                if(nearbyMarkers.size() > 0) {
+                    MapMarker topmostMapMarker = nearbyMarkers.get(0);
+                    showPanel(topmostMapMarker);
 
-                    if(metadata != null) {
-                        panel.setLocName(metadata.getString("name"));
-                        panel.setAddress(metadata.getString("address"));
-                        panel.setThumbnail(metadata.getString("imagePath"));
-                    } else {
-                        //Placeholder in caso di dati mancanti
-                        panel.setLocName("N/A");
-                        panel.setAddress("N/A");
-                        panel.thumbnail.setImageResource(R.drawable.ic_small_placeholder);
-                    }
+                    restoreMarker();
+                    //Sostituisco il marker selezionato con uno identico ma di colore verde
+                    selectedMarker = new MapMarker(topmostMapMarker.getCoordinates(),
+                            MapImageFactory.fromResource(getResources(), R.drawable.ic_poi_selected),
+                            new Anchor2D(0.5f, 1));
+                    selectedMarker.setMetadata(topmostMapMarker.getMetadata());
+                    mapView.getMapScene().removeMapMarker(topmostMapMarker);
+                    mapView.getMapScene().addMapMarker(selectedMarker);
+                    if(selectedMarker.getMetadata() != null)
+                        markers.replace(selectedMarker.getMetadata().getString("id"), selectedMarker);
+
                     panel.setVisibility(View.VISIBLE);
-                } else
+                } else {
+                    restoreMarker();
                     panel.setVisibility(View.GONE);
+                }
             }
         });
     }
 
+    //Mostra l' infopanel popolato dai metadati del POI
+    private void showPanel(MapMarker marker) {
+        if(marker == null)
+            return;
+
+        Metadata metadata = marker.getMetadata();
+        if(metadata != null) {
+            panel.setLocName(metadata.getString("name"));
+            panel.setAddress(metadata.getString("address"));
+            panel.setThumbnail(metadata.getString("imagePath"));
+        } else {
+            //Placeholder in caso di dati mancanti
+            panel.setLocName("N/A");
+            panel.setAddress("N/A");
+            panel.thumbnail.setImageResource(R.drawable.ic_small_placeholder);
+        }
+    }
+
+    //Riporto il marker deselezionato al suo colore originale
+    private void restoreMarker() {
+        if(selectedMarker == null)
+            return;
+
+        int icon;
+        Metadata metadata = selectedMarker.getMetadata();
+        //Scelgo l' icona
+        if(metadata != null && Boolean.parseBoolean(metadata.getString("visited")))
+            icon = R.drawable.ic_poi_visited;
+        else
+            icon = R.drawable.ic_poi;
+        //Creo il marker
+        MapMarker marker = new MapMarker(selectedMarker.getCoordinates(),
+                MapImageFactory.fromResource(getResources(), icon),
+                new Anchor2D(0.5f, 1));
+        marker.setMetadata(selectedMarker.getMetadata());
+        //Sostituisce il marker selezionato con quello originale
+        if(selectedMarker != null)
+            mapView.getMapScene().removeMapMarker(selectedMarker);
+        mapView.getMapScene().addMapMarker(marker);
+        if(selectedMarker.getMetadata() != null)
+            markers.replace(selectedMarker.getMetadata().getString("id"), marker);
+    }
+
     //Restituisce, appositamente formattata, la data in cui è stato effettuato il rilevamento di location
-    private String getFormattedDate(Location location) {
+    private String getFormattedDate(@NonNull Location location) {
         Date date = new Date(location.getTime());
         return dateFormat.format(date);
     }
 
     //Restituisce true se uno dei servizi di localizzazione è attivo, false altrimenti
     private boolean isLocationEnabled() {
-        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
-                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
     }
 
     //Attiva la localizzazione richiedendo i permessi se necessario
@@ -398,6 +448,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         if(location == null) {
             return;
         }
+
         //Recupero le nuove coordinate
         latitude = location.getLatitude();
         longitude = location.getLongitude();
@@ -419,6 +470,30 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
                 .setNegativeButton("Annulla", (dialogInterface, which) ->
                         Toast.makeText(requireContext(), "GPS necessario per rilevare la posizione.", Toast.LENGTH_LONG).show())
                 .show();
+    }
+
+    //Aggiorna il segnalino che marca la posizione corrente
+    public void updateLocationMarker() {
+        MapImage mapImage = MapImageFactory.fromResource(getResources(), R.drawable.ic_current_location);
+        if(currentLocationMarker != null)
+            mapView.getMapScene().removeMapMarker(currentLocationMarker);
+        currentLocationMarker = new MapMarker(new GeoCoordinates(latitude, longitude), mapImage);
+        mapView.getMapScene().addMapMarker(currentLocationMarker);
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+        askForUpdates();
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
+        Toast.makeText(requireContext(), "GPS disattivato!", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -444,28 +519,11 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         mapView.onDestroy();
     }
 
-    //Sposta il segnalino che marca la posizione corrente
-    public void updateLocationMarker() {
-        MapImage mapImage = MapImageFactory.fromResource(getResources(), R.drawable.ic_current_location);
-        if(currentLocationMarker != null)
-            mapView.getMapScene().removeMapMarker(currentLocationMarker);
-        currentLocationMarker = new MapMarker(new GeoCoordinates(latitude, longitude), mapImage);
-        mapView.getMapScene().addMapMarker(currentLocationMarker);
-    }
-
     @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-
-    }
-
-    @Override
-    public void onProviderEnabled(String provider) {
-        askForUpdates();
-    }
-
-    @Override
-    public void onProviderDisabled(String provider) {
-        Toast.makeText(requireContext(), "GPS disattivato!", Toast.LENGTH_SHORT).show();
+    public void onSaveInstanceState(@NonNull Bundle bundle) {
+        if(selectedMarker != null && selectedMarker.getMetadata() != null)
+            bundle.putString("selectedMarkerId", selectedMarker.getMetadata().getString("id"));
+        super.onSaveInstanceState(bundle);
     }
 
     //Mantiene riferimenti ai componenti del pannello informativo
@@ -494,6 +552,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
 
         public void setThumbnail(String path) {
             if(path != null) {
+                //Listener per sapere quando l' ImageView è stata creata
                 thumbnail.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
                     @Override
                     public void onLayoutChange(View v, int left, int top, int right, int bottom, int oldLeft, int oldTop, int oldRight, int oldBottom) {
@@ -506,6 +565,9 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         }
 
         public void setVisibility(int type) {
+            if(type != View.VISIBLE && type != View.GONE)
+                return;
+
             card.setVisibility(type);
         }
     }

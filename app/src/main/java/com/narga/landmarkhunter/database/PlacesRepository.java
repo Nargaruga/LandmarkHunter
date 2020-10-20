@@ -1,9 +1,11 @@
-package com.narga.landmarkhunter;
+package com.narga.landmarkhunter.database;
 
 import android.app.Application;
 import android.os.AsyncTask;
 
 import androidx.lifecycle.LiveData;
+
+import com.narga.landmarkhunter.data.PointOfInterest;
 
 import java.util.List;
 
