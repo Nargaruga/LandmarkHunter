@@ -4,10 +4,7 @@
     <string name="place_address">Indirizzo: %s %s</string>
     <string name="place_date">Visitato il: %s</string>
     <string name="place_coordinates">Coordinate: %s %s</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="settings_button_text">Cambia foto</string>
     <string name="entry_thumbnail_description">A picture of the point of interest, scaled down</string>
     <string name="locate_on_map_icon_description">Button to locate the location on the map</string>
-    <!-- TODO: Remove or change this placeholder text -->
 </resources>

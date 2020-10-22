@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".LargeImageActivity">
+    tools:context=".ui.LargeImageActivity">
 
     <com.github.chrisbanes.photoview.PhotoView
         android:id="@+id/selected_image"
