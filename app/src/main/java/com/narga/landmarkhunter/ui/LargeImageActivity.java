@@ -84,6 +84,7 @@ public class LargeImageActivity extends AppCompatActivity implements View.OnClic
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if(result.getData() != null && result.getData().getData() != null) {
+                        //Effetto una query al ContentResolver passandovi l' URI ottenuto
                         asyncQueryHandler.startQuery(0,
                                 null,
                                 result.getData().getData(),
@@ -130,6 +131,7 @@ public class LargeImageActivity extends AppCompatActivity implements View.OnClic
     @Override
     public void onQueryComplete(int token, Object cookie, Cursor cursor) {
         if(cursor != null) {
+            //Recupero il primo risultato della query
             cursor.moveToFirst();
             int columnIndex = cursor.getColumnIndex(new String[]{MediaStore.Images.Media.DATA}[0]);
             String picturePath = cursor.getString(columnIndex);

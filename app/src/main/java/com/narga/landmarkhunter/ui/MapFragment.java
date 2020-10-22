@@ -360,17 +360,15 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
                     mapView.getMapScene().addMapMarker(selectedMarker);
                     if(selectedMarker.getMetadata() != null)
                         markers.replace(selectedMarker.getMetadata().getString("id"), selectedMarker);
-
-                    panel.setVisibility(View.VISIBLE);
                 } else {
                     restoreMarker();
-                    panel.setVisibility(View.GONE);
+                    hidePanel();
                 }
             }
         });
     }
 
-    //Mostra l' infopanel popolato dai metadati del POI
+    //Mostra il panel informativo popolato dai metadati del POI
     private void showPanel(MapMarker marker) {
         if(marker == null)
             return;
@@ -386,6 +384,12 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
             panel.setAddress("N/A");
             panel.thumbnail.setImageResource(R.drawable.ic_small_placeholder);
         }
+        panel.setVisibility(View.VISIBLE);
+    }
+
+    //Nasconde il panel informativo
+    private void hidePanel() {
+        panel.setVisibility(View.GONE);
     }
 
     //Riporto il marker deselezionato al suo colore originale

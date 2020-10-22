@@ -24,11 +24,9 @@ import java.util.Date;
 //Dialog che da all' utente la possibilità di scegliere se aprire la galleria o la fotocamera
 public class ImagePickerDialogFragment extends DialogFragment {
     @SuppressLint("SimpleDateFormat")
-    private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
-    static final int TAKE_PICTURE_CODE = 1;
-    static final int PICK_IMAGE_CODE = 2;
-    private ActivityResultLauncher<Uri> cameraLauncher;
-    private ActivityResultLauncher<Intent> galleryLauncher;
+    private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss"); //Formato per le date
+    private ActivityResultLauncher<Uri> cameraLauncher; //Launcher per aprire la fotocamera
+    private ActivityResultLauncher<Intent> galleryLauncher; //Launcher per aprire la galleria
 
     public ImagePickerDialogFragment(ActivityResultLauncher<Uri> cameraLauncher, ActivityResultLauncher<Intent> galleryLauncher){
         this.cameraLauncher = cameraLauncher;
@@ -48,11 +46,13 @@ public class ImagePickerDialogFragment extends DialogFragment {
                     if(!requireActivity().getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
                         Toast.makeText(requireActivity(), "Il dispositivo non è dotato di fotocamera.", Toast.LENGTH_LONG).show();
                     } else {
+                        //Creo il filepath in cui verrà salvata la foto e lo passo alla LargeImageActivity
                         String filename = generateFileName();
                         File file = new File(requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES), filename);
                         Uri uri = FileProvider.getUriForFile(requireContext(), requireContext().getApplicationContext().getPackageName() + ".fileprovider", file);
                         LargeImageActivity activity = (LargeImageActivity) requireActivity();
                         activity.setFilepath(file.getAbsolutePath());
+
                         cameraLauncher.launch(uri);
                     }
                     break;

@@ -3,7 +3,7 @@ package com.narga.landmarkhunter.utility;
 import android.content.AsyncQueryHandler;
 import android.content.ContentResolver;
 import android.database.Cursor;
-import android.net.Uri;
+
 
 import java.lang.ref.WeakReference;
 

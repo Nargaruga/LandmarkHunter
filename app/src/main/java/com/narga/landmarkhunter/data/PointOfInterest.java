@@ -4,16 +4,8 @@ import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
-import androidx.room.TypeConverter;
-import androidx.room.TypeConverters;
-
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import java.util.ArrayList;
 
 @Entity(tableName = "point_of_interest")
-@TypeConverters(PointOfInterest.Converters.class)
 public class PointOfInterest {
     @PrimaryKey
     @NonNull
@@ -73,7 +65,7 @@ public class PointOfInterest {
     public String getImagePath() {
         return imagePath;
     }
-    
+
     @Override
     public boolean equals(Object obj) {
         if(this == obj)
@@ -85,23 +77,5 @@ public class PointOfInterest {
 
         PointOfInterest poi = (PointOfInterest) obj;
         return this.id.equals(poi.getId());
-    }
-
-    public static class Converters {
-        private Gson gson = new Gson();
-
-        @TypeConverter
-        public ArrayList<String> jsonToArrayList(String json) {
-            if(json == null)
-                return new ArrayList<>();
-
-            return gson.fromJson(json, new TypeToken<ArrayList<String>>() {
-            }.getType());
-        }
-
-        @TypeConverter
-        public String arrayListToJson(ArrayList<String> strings) {
-            return gson.toJson(strings);
-        }
     }
 }

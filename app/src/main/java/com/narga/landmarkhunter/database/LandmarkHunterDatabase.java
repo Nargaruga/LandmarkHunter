@@ -10,7 +10,7 @@ import com.narga.landmarkhunter.data.PointOfInterest;
 
 @Database(entities = PointOfInterest.class, version = 1)
 public abstract class LandmarkHunterDatabase extends RoomDatabase {
-    private static LandmarkHunterDatabase INSTANCE;
+    private static LandmarkHunterDatabase INSTANCE; //Riferimento all' unica istanza del DB
 
     public abstract PointOfInterestDao pointOfInterestDao();
 

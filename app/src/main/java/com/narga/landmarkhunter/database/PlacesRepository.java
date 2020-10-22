@@ -11,7 +11,7 @@ import java.util.List;
 
 //Classe per interagire asincronamente con il database
 public class PlacesRepository {
-    private final PointOfInterestDao dao;
+    private final PointOfInterestDao dao; //Data Access Object per l' interazione con il DB
     private final LiveData<List<PointOfInterest>> allPois; //Dati osservati dal ViewModel
 
     public PlacesRepository(Application app) {
@@ -33,13 +33,6 @@ public class PlacesRepository {
         task.execute(path, id);
     }
 
-    //Restituisce il numero di POI
-    public int getPoiCount() {
-        if(allPois != null && allPois.getValue() != null)
-            return allPois.getValue().size();
-        else
-            return 0;
-    }
     //Restituisce tutti i POI
     public LiveData<List<PointOfInterest>> getAllPois() {
         return allPois;
@@ -71,7 +64,7 @@ public class PlacesRepository {
         @Override
         protected Void doInBackground(String... params) {
             if(params != null && params.length > 1)
-             dao.updateImageById(params[0], params[1]);
+                dao.updateImageById(params[0], params[1]);
             return null;
         }
     }

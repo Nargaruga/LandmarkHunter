@@ -12,8 +12,8 @@ import java.util.List;
 
 //Mantiene un' istanza del repository e offre metodi per accedervi
 public class SharedViewModel extends AndroidViewModel {
-    private final PlacesRepository repository;
-    private final LiveData<List<PointOfInterest>> allPois;
+    private final PlacesRepository repository; //Repository per l' interazione asincrona con il DB
+    private final LiveData<List<PointOfInterest>> allPois; //Dati osservati
 
     public SharedViewModel(@NonNull Application app) {
         super(app);
