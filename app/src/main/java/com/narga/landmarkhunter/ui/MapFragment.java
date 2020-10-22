@@ -235,7 +235,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
                         MapMarker marker = markers.get(place.getId());
                         if(marker != null) {
                             //Controllo se aggiornare il colore del segnalino
-                            if(marker.getMetadata() != null && !Boolean.parseBoolean(marker.getMetadata().getString("visited")) && visited)
+                            if(marker.getMetadata() != null && !Boolean.parseBoolean(marker.getMetadata().getString("visited")) && visited && !marker.equals(selectedMarker))
                                 addMapMarker(poi, true);
                         } else
                             addMapMarker(poi, visited);
@@ -318,7 +318,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         if(markers.size() == MAX_MARKERS)
             removeFurthestMarker();
 
-        //Decido il colore del segnalino
+        //Decido il colore del marker
         if(visited)
             mapImage = MapImageFactory.fromResource(getResources(), R.drawable.ic_poi_visited);
         else
@@ -404,6 +404,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
             icon = R.drawable.ic_poi_visited;
         else
             icon = R.drawable.ic_poi;
+
         //Creo il marker
         MapMarker marker = new MapMarker(selectedMarker.getCoordinates(),
                 MapImageFactory.fromResource(getResources(), icon),
@@ -571,7 +572,6 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         public void setVisibility(int type) {
             if(type != View.VISIBLE && type != View.GONE)
                 return;
-
             card.setVisibility(type);
         }
     }
