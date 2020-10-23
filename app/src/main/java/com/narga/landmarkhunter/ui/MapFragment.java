@@ -171,7 +171,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         //Inizializzo il ViewModel per l' interazione con il DB
         viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
         //Mostro all' utente le motivazioni per l' uso della geolocalizzazione
-        showPermissionInformation();
+        showPermissionRationale();
         //Rimuovo il LifecycleObserver
         activity.getLifecycle().removeObserver(this);
     }
@@ -465,7 +465,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
     //Chiede all' utente di attivare la localizzazione
     private void showAlert() {
         AlertDialog.Builder dialog = new AlertDialog.Builder(requireContext());
-        dialog.setTitle(R.string.gps_request) //TODO strings
+        dialog.setTitle(R.string.gps_request)
                 .setMessage(R.string.gps_request_rationale)
                 .setPositiveButton("GPS", (dialogInterface, which) -> {
                     Intent gpsIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
@@ -476,8 +476,8 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
                 .show();
     }
 
-    //Mostra all' utente perchè l' applicazione ha bisogno dei permessi di localizzazione
-    private void showPermissionInformation() {
+    //Spiega all' utente perchè l' applicazione ha bisogno dei permessi di localizzazione
+    private void showPermissionRationale() {
         AlertDialog.Builder dialog = new AlertDialog.Builder(requireContext());
         dialog.setTitle(R.string.location_permission_rationale_title)
                 .setMessage(R.string.location_permission_rationale)
