@@ -170,6 +170,8 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         FragmentActivity activity = requireActivity();
         //Inizializzo il ViewModel per l' interazione con il DB
         viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
+        //Mostro all' utente le motivazioni per l' uso della geolocalizzazione
+        showPermissionInformation();
         //Rimuovo il LifecycleObserver
         activity.getLifecycle().removeObserver(this);
     }
@@ -436,9 +438,6 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
             //Ho i permessi, mi registro per ricevere gli aggiornamenti della posizione
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_TIME, MIN_DIST, this);
             updateLocation(locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER));
-        } else {
-            //Non ho i permessi, pertanto li richiedo
-            requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
     }
 
@@ -466,14 +465,23 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
     //Chiede all' utente di attivare la localizzazione
     private void showAlert() {
         AlertDialog.Builder dialog = new AlertDialog.Builder(requireContext());
-        dialog.setTitle("Geolocalizzazione richiesta")
-                .setMessage("Abilita il GPS per permettere all' app di rilevare la tua posizione.")
+        dialog.setTitle(R.string.gps_request) //TODO strings
+                .setMessage(R.string.gps_request_rationale)
                 .setPositiveButton("GPS", (dialogInterface, which) -> {
                     Intent gpsIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
                     startActivity(gpsIntent);
                 })
-                .setNegativeButton("Annulla", (dialogInterface, which) ->
-                        Toast.makeText(requireContext(), "GPS necessario per rilevare la posizione.", Toast.LENGTH_LONG).show())
+                .setNegativeButton(R.string.cancel, (dialogInterface, which) ->
+                        Toast.makeText(requireContext(), R.string.gps_turned_off, Toast.LENGTH_LONG).show())
+                .show();
+    }
+
+    //Mostra all' utente perchè l' applicazione ha bisogno dei permessi di localizzazione
+    private void showPermissionInformation() {
+        AlertDialog.Builder dialog = new AlertDialog.Builder(requireContext());
+        dialog.setTitle(R.string.location_permission_rationale_title)
+                .setMessage(R.string.location_permission_rationale)
+                .setPositiveButton(R.string.ok, (dialogInterface, which) -> requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION))
                 .show();
     }
 
@@ -498,7 +506,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
 
     @Override
     public void onProviderDisabled(String provider) {
-        Toast.makeText(requireContext(), "GPS disattivato!", Toast.LENGTH_SHORT).show();
+        Toast.makeText(requireContext(), R.string.gps_turned_off, Toast.LENGTH_SHORT).show();
     }
 
     @Override
