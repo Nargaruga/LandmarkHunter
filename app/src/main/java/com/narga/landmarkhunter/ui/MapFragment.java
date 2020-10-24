@@ -9,7 +9,6 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -188,7 +187,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
             if(mapError == null) {
                 centerMapOnCoordinates(latitude, longitude, DEFAULT_ZOOM);
             } else {
-                Log.d(LOG_TAG, "onLoadScene failed: " + mapError.name());
+                Toast.makeText(getContext(), "Errore durante il caricamento della mappa: " + mapError.name(),Toast.LENGTH_LONG).show();
             }
         });
     }
