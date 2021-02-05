@@ -3,6 +3,7 @@ package com.narga.landmarkhunter.ui;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -48,6 +49,7 @@ import com.here.sdk.search.SearchEngine;
 import com.here.sdk.search.SearchOptions;
 import com.narga.landmarkhunter.R;
 import com.narga.landmarkhunter.data.PointOfInterest;
+import com.narga.landmarkhunter.database.PlacesRepository;
 import com.narga.landmarkhunter.database.SharedViewModel;
 import com.narga.landmarkhunter.utility.BitmapHandlingTask;
 
@@ -63,7 +65,6 @@ import java.util.stream.Stream;
 
 //Fragment per la gestione della mappa
 public class MapFragment extends Fragment implements LocationListener, LifecycleObserver {
-    public static final String LOG_TAG = MapFragment.class.getSimpleName();
     public static final int MAX_MARKERS = 30; //Massimo numero di marker visualizzabili allo stesso momento
     public static final int DEFAULT_ZOOM = 2000; //Zoom di default
     public static final int FOCUSED_ZOOM = 500; //Zoom maggiore
@@ -109,6 +110,19 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
             if(mainActivity != null)
                 mainActivity.switchTab(MainActivity.MAP_TAB);
         });
+
+        /*TODO BEGIN - MOCK DATA
+        for(int i = 0; i < 1000; i++) {
+            PointOfInterest poi = new PointOfInterest(String.valueOf(i),
+                    "name " + i,
+                    "address " + i,
+                    "date " + i,
+                    (double) 0,
+                    (double) 0,
+                    "");
+            viewModel.insertPoi(poi);
+        }
+        TODO END - MOCK DATA*/
 
         //Imposto il launcher per richiedere i permessi
         requestPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
@@ -169,8 +183,6 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         FragmentActivity activity = requireActivity();
         //Inizializzo il ViewModel per l' interazione con il DB
         viewModel = new ViewModelProvider(activity).get(SharedViewModel.class);
-        //Mostro all' utente le motivazioni per l' uso della geolocalizzazione
-        showPermissionRationale();
         //Rimuovo il LifecycleObserver
         activity.getLifecycle().removeObserver(this);
     }
@@ -187,7 +199,7 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
             if(mapError == null) {
                 centerMapOnCoordinates(latitude, longitude, DEFAULT_ZOOM);
             } else {
-                Toast.makeText(getContext(), "Errore durante il caricamento della mappa: " + mapError.name(),Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(), "Errore durante il caricamento della mappa: " + mapError.name(), Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -213,33 +225,42 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
                         //Compongo l' indirizzo
                         String address = place.getAddress().streetName.trim() + " " + place.getAddress().houseNumOrName.trim();
                         String completeAddress = Stream.of(address.trim(), place.getAddress().city.trim(), place.getAddress().country.trim())
-                                .filter(str -> str != null && !str.isEmpty())
+                                .filter(str -> !str.isEmpty())
                                 .collect(Collectors.joining(", "));
 
-                        PointOfInterest poi = new PointOfInterest(place.getId(),
-                                place.getTitle(),
-                                completeAddress,
-                                getFormattedDate(location),
-                                place.getGeoCoordinates().latitude,
-                                place.getGeoCoordinates().longitude,
-                                null);
+                        viewModel.getById(place.getId(), new PlacesRepository.DBQueryListener<PointOfInterest>() {
+                            @Override
+                            public void onQueryResult(PointOfInterest poi) {
+                                if(poi != null) {
+                                    markers.remove(poi.getId()); //TODO controllare se è presente anzichè rimuoverlo?
+                                    addMapMarker(poi, true);
+                                } else { //TODO da rivedere
+                                    PointOfInterest newPoi = new PointOfInterest(place.getId(),
+                                            place.getTitle(),
+                                            completeAddress,
+                                            getFormattedDate(location),
+                                            place.getGeoCoordinates().latitude,
+                                            place.getGeoCoordinates().longitude,
+                                            null);
 
-                        boolean visited = isVisited(poi);
-                        boolean close = isClose(place);
+                                    boolean close = isClose(place);
 
-                        if(close && !visited) {
-                            visited = true;
-                            viewModel.insertPoi(poi);
-                        }
+                                    if(close) {
+                                        viewModel.insertPoi(newPoi);
+                                        updateScore();
+                                    }
 
-                        //Controllo se il segnalino è già sulla mappa
-                        MapMarker marker = markers.get(place.getId());
-                        if(marker != null) {
-                            //Controllo se aggiornare il colore del segnalino
-                            if(marker.getMetadata() != null && !Boolean.parseBoolean(marker.getMetadata().getString("visited")) && visited && !marker.equals(selectedMarker))
-                                addMapMarker(poi, true);
-                        } else
-                            addMapMarker(poi, visited);
+                                    //Controllo se il segnalino è già sulla mappa
+                                    MapMarker marker = markers.get(place.getId());
+                                    if(marker != null) {
+                                        //Controllo se aggiornare il colore del segnalino
+                                        if(marker.getMetadata() != null && !Boolean.parseBoolean(marker.getMetadata().getString("visited")) && close && !marker.equals(selectedMarker))
+                                            addMapMarker(newPoi, true);
+                                    } else
+                                        addMapMarker(newPoi, close);
+                                }
+                            }
+                        });
                     }
                 }
             }
@@ -253,27 +274,6 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
 
         String mainCategoryId = place.getDetails().getPrimaryCategories().get(0).getId().split("-")[0];
         return mainCategoryId.equals(PlaceCategory.SIGHTS_AND_MUSEUMS) || mainCategoryId.equals(PlaceCategory.NATURAL_AND_GEOGRAPHICAL);
-    }
-
-    //Restituisce true se il POI è già stato visitato in precedenza, false altrimenti
-    private boolean isVisited(PointOfInterest poi) {
-        if(poi == null)
-            return false;
-
-        boolean visited = false;
-        if(viewModel.getAllPois().getValue() != null) {
-            ArrayList<PointOfInterest> pois = (ArrayList<PointOfInterest>) viewModel.getAllPois().getValue();
-            int index;
-
-            if((index = pois.indexOf(poi)) != -1) {
-                //Il poi è già presente nel database, pertanto recupero l' immagine da mostrare nella thumbnail dell' infopanel, se presente
-                if(pois.get(index).getImagePath() != null)
-                    poi.setImagePath(pois.get(index).getImagePath());
-                visited = true;
-            }
-        }
-
-        return visited;
     }
 
     //Controlla se il luogo in questione è abbastanza vicino da essere considerato "visitato"
@@ -466,21 +466,12 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
         AlertDialog.Builder dialog = new AlertDialog.Builder(requireContext());
         dialog.setTitle(R.string.gps_request)
                 .setMessage(R.string.gps_request_rationale)
-                .setPositiveButton("GPS", (dialogInterface, which) -> {
+                .setPositiveButton(R.string.gps_settings, (dialogInterface, which) -> {
                     Intent gpsIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
                     startActivity(gpsIntent);
                 })
                 .setNegativeButton(R.string.cancel, (dialogInterface, which) ->
                         Toast.makeText(requireContext(), R.string.gps_turned_off, Toast.LENGTH_LONG).show())
-                .show();
-    }
-
-    //Spiega all' utente perchè l' applicazione ha bisogno dei permessi di localizzazione
-    private void showPermissionRationale() {
-        AlertDialog.Builder dialog = new AlertDialog.Builder(requireContext());
-        dialog.setTitle(R.string.location_permission_rationale_title)
-                .setMessage(R.string.location_permission_rationale)
-                .setPositiveButton(R.string.ok, (dialogInterface, which) -> requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION))
                 .show();
     }
 
@@ -491,6 +482,10 @@ public class MapFragment extends Fragment implements LocationListener, Lifecycle
             mapView.getMapScene().removeMapMarker(currentLocationMarker);
         currentLocationMarker = new MapMarker(new GeoCoordinates(latitude, longitude), mapImage);
         mapView.getMapScene().addMapMarker(currentLocationMarker);
+    }
+
+    private void updateScore() {
+        //TODO shared preferences
     }
 
     @Override

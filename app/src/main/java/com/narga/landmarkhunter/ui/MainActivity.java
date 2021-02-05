@@ -1,7 +1,9 @@
 package com.narga.landmarkhunter.ui;
 
+import android.Manifest;
 import android.os.Bundle;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager2.widget.ViewPager2;
 
@@ -12,10 +14,10 @@ import com.narga.landmarkhunter.R;
 
 //Activity contenente un tablayout
 public class MainActivity extends AppCompatActivity {
-    private static final String LOG_TAG = MainActivity.class.getSimpleName();
     public static final int MAP_TAB = 0;
     public static final int VISITED_TAB = 1;
     private ViewPager2 pager;
+    private boolean firstLaunch = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,7 +47,6 @@ public class MainActivity extends AppCompatActivity {
 
         pager.setCurrentItem(tabIndex);
     }
-
     @Override
     protected void onPause() {
         super.onPause();

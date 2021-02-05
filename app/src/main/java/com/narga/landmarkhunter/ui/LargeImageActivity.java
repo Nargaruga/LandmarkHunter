@@ -28,7 +28,6 @@ import com.narga.landmarkhunter.utility.QueryHandler;
 
 //Activity che mostra una versione ingrandita dell' immagine della thumbnail
 public class LargeImageActivity extends AppCompatActivity implements View.OnClickListener, QueryHandler.AsyncQueryListener {
-    private static final String LOG_TAG = LargeImageActivity.class.getSimpleName();
     private static final int STORAGE_PERMISSIONS = 0;
     private PhotoView photoView;
     private SharedViewModel viewModel;

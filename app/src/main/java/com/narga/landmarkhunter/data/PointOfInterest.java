@@ -9,18 +9,17 @@ import androidx.room.PrimaryKey;
 public class PointOfInterest {
     @PrimaryKey
     @NonNull
-    private String id;
+    private String _id;
     private String name;
-    @ColumnInfo(name = "address")
     private String address;
     private String date;
-    private double latitude;
-    private double longitude;
+    private Double latitude;
+    private Double longitude;
     @ColumnInfo(name = "image_path")
     private String imagePath;
 
-    public PointOfInterest(@NonNull String id, String name, String address, String date, double latitude, double longitude, String imagePath) {
-        this.id = id;
+    public PointOfInterest(@NonNull String id, String name, String address, String date, Double latitude, Double longitude, String imagePath) {
+        this._id = id;
         this.name = name;
         this.address = address;
         this.date = date;
@@ -30,12 +29,12 @@ public class PointOfInterest {
     }
 
     public void setId(@NonNull String s) {
-        id = s;
+        _id = s;
     }
 
     @NonNull
     public String getId() {
-        return id;
+        return _id;
     }
 
     public String getName() {
@@ -50,15 +49,15 @@ public class PointOfInterest {
         return date;
     }
 
-    public double getLatitude() {
+    public Double getLatitude() {
         return latitude;
     }
 
-    public double getLongitude() {
+    public Double getLongitude() {
         return longitude;
     }
 
-    public void setImagePath(String s){
+    public void setImagePath(String s) {
         imagePath = s;
     }
 
@@ -76,6 +75,15 @@ public class PointOfInterest {
             return false;
 
         PointOfInterest poi = (PointOfInterest) obj;
-        return this.id.equals(poi.getId());
+        return poi.getId().equals(this._id) && poi.getImagePath().equals(this.imagePath);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = 17;
+        result = 37 * result + this._id.hashCode();
+        result = 37 * result + ((this.imagePath != null) ? this.imagePath.hashCode() : 0);
+
+        return result;
     }
 }

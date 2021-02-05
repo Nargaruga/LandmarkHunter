@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -14,18 +15,19 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.narga.landmarkhunter.data.PointOfInterest;
 import com.narga.landmarkhunter.R;
+import com.narga.landmarkhunter.database.PlacesRepository;
 import com.narga.landmarkhunter.ui.adapters.VisitedPlacesAdapter;
 import com.narga.landmarkhunter.database.SharedViewModel;
 
 import java.util.ArrayList;
 
 //Fragment contenente il punteggio e la lista dei luoghi esplorati
-public class VisitedPlacesFragment extends Fragment {
+public class VisitedPlacesFragment extends Fragment implements PlacesRepository.DBQueryListener<Integer> {
     private static final String LOG_TAG = VisitedPlacesAdapter.class.getSimpleName();
-    private VisitedPlacesAdapter adapter; //Adapter per associare gli elemento alla RecyclerList
-    private SharedViewModel viewModel; //ViewModel per l' interazione con il DB
     private TextView scoreText; //TextView che visualizza il numero di luoghi visitati
     private int score; //Numero di luoghi visitati
+    private VisitedPlacesAdapter adapter;
+    private int visibleCount;
 
     public VisitedPlacesFragment() {
         // Required empty public constructor
@@ -45,30 +47,27 @@ public class VisitedPlacesFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         scoreText = view.findViewById(R.id.score);
-        //Recupero il ViewModel
-        viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-        //Inizializzo il dataset
-        ArrayList<PointOfInterest> items = new ArrayList<>();
-        //Ottengo la recyclerView
-        RecyclerView recyclerView = view.findViewById(R.id.recycler_view);
-        //Associo un adapter alla RecyclerView
-        adapter = new VisitedPlacesAdapter(items);
-        recyclerView.setAdapter(adapter);
-        //Imposto un LayoutManager verticale per la RecyclerView
-        LinearLayoutManager lm = new LinearLayoutManager(getContext());
-        lm.setOrientation(RecyclerView.VERTICAL);
-        recyclerView.setLayoutManager(lm);
 
-        //Inizio ad osservare i dati per essere notificato di cambiamenti
-        observerSetup();
+        adapter = new VisitedPlacesAdapter();
+        //ViewModel per l' interazione con il DB
+        SharedViewModel viewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+        viewModel.getPoisByDate().observe(getViewLifecycleOwner(), pagedList -> adapter.submitList(pagedList));
+        viewModel.getCount(this);
+
+        RecyclerView recyclerView = view.findViewById(R.id.places_list);
+        LinearLayoutManager lm = new LinearLayoutManager(requireActivity());
+        lm.setOrientation(LinearLayoutManager.VERTICAL);
+        recyclerView.setLayoutManager(lm);
+        recyclerView.setAdapter(adapter);
     }
 
-    //Imposto l' observer per i dati sui luoghi esplorati
-    private void observerSetup() {
-        viewModel.getAllPois().observe(getViewLifecycleOwner(), items -> {
-            adapter.setItems(items);
-            score = adapter.getItemCount();
-            scoreText.setText(getString(R.string.score_str, score));
-        });
+    @Override
+    public void onResume() {
+        super.onResume();
+    }
+
+    @Override
+    public void onQueryResult(Integer result) {
+        scoreText.setText(getResources().getString(R.string.score_str, result));
     }
 }

@@ -4,12 +4,12 @@ import android.content.AsyncQueryHandler;
 import android.content.ContentResolver;
 import android.database.Cursor;
 
-
 import java.lang.ref.WeakReference;
 
 //Classe per effettuare asincronamente query al ContentResolver
 public class QueryHandler extends AsyncQueryHandler {
     private WeakReference<AsyncQueryListener> listenerRef;
+
     public QueryHandler(ContentResolver contentResolver, AsyncQueryListener listener) {
         super(contentResolver);
         listenerRef = new WeakReference<>(listener);

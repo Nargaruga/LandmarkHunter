@@ -52,7 +52,7 @@ public class ImagePickerDialogFragment extends DialogFragment {
                         Uri uri = FileProvider.getUriForFile(requireContext(), requireContext().getApplicationContext().getPackageName() + ".fileprovider", file);
                         LargeImageActivity activity = (LargeImageActivity) requireActivity();
                         activity.setFilepath(file.getAbsolutePath());
-
+                        
                         cameraLauncher.launch(uri);
                     }
                     break;
